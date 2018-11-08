@@ -12,7 +12,8 @@ buildscript {
     dependencies {
 //        classpath 'com.android.tools.build:gradle:3.2.1'
         classpath "com.android.tools.build:gradle:$androidPluginVersion"
-//        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        // 코틀린 gradle 플러그인 추가
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
 
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
