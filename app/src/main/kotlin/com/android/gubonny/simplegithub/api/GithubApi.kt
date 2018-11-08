@@ -2,6 +2,7 @@ package com.android.gubonny.simplegithub.api
 
 import com.android.gubonny.simplegithub.api.model.GithubRepo
 import com.android.gubonny.simplegithub.api.model.RepoSearchResponse
+import io.reactivex.Observable
 
 import retrofit2.Call
 import retrofit2.http.GET
@@ -15,10 +16,17 @@ import retrofit2.http.Query
 interface GithubApi {
 
     @GET("search/repositories")
-    fun searchRepository(@Query("q") query: String): Call<RepoSearchResponse>
+    fun searchRepository(@Query("q") query: String):
+            Observable<RepoSearchResponse>
+//            Call<RepoSearchResponse>
 
-    @GET("repos/{owner}/{name}")
+            @GET("repos/{owner}/{name}")
+
     fun getRepository(
             @Path("owner") ownerLogin: String,
-            @Path("name") repoName: String): Call<GithubRepo>
+            @Path("name") repoName: String):
+    // 반환 타입 변경
+            Observable<GithubRepo>
+
+//            Call<GithubRepo>
 }

@@ -13,7 +13,10 @@ import com.android.gubonny.simplegithub.R
 //import com.android.gubonny.simplegithub.api.GithubApiProvider
 import com.android.gubonny.simplegithub.api.model.GithubRepo
 import com.android.gubonny.simplegithub.api.provideGithubApi
+import com.android.gubonny.simplegithub.extensions.plusAssign
 import com.android.gubonny.simplegithub.ui.GlideApp
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
 import kotlinx.android.synthetic.main.activity_repository.*
 
 import java.text.ParseException
@@ -58,9 +61,6 @@ class RepositoryActivity : AppCompatActivity() {
     // lazy 로 전향 함.
     internal val api by lazy { provideGithubApi(this) }
 
-    // null 값을 허용하도록 한 후, 초기값을 명시적으로 null 지정 함.
-    internal var repoCall: Call<GithubRepo>? = null
-
     // REST API 응답에 포함된 날짜 및 시간 표시 형식입니다.
     // 객체 한번 생성하고 나면
     // 이후 변경할 일이 없어 val 로 변경.
@@ -74,6 +74,12 @@ class RepositoryActivity : AppCompatActivity() {
     internal val dateFormatToShow = SimpleDateFormat(
             "yyyy-MM-dd HH:mm:ss", Locale.getDefault()
     )
+
+    //    // null 값을 허용하도록 한 후, 초기값을 명시적으로 null 지정 함.
+//    internal var repoCall: Call<GithubRepo>? = null
+    // 여러 disposable 객체를 관리할 수 있는 CompositeDisposable 객체를 초기화 함.
+    // repoCall 대신 사용.
+    internal val disposables = CompositeDisposable()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -100,71 +106,131 @@ class RepositoryActivity : AppCompatActivity() {
 
     override fun onStop() {
         super.onStop()
-        // 액티비티가 화면에서 사라지는 시점에서
-        // API 호출 객체가 생성되어 있다면
-        // API 요청을 취소 함.
-        repoCall?.run { cancel() }
+//        // 액티비티가 화면에서 사라지는 시점에서
+//        // API 호출 객체가 생성되어 있다면
+//        // API 요청을 취소 함.
+//        repoCall?.run { cancel() }
+
+        // 관리하고 있던 디스포저블 객체를 모두 해제 함.
+        // 네트워크 요청이 있다고 하면 자동 취소 됨.
+        disposables.clear()
     }
 
     private fun showRepositoryInfo(login: String, repoName: String) {
-        showProgress()
+//        showProgress()
+//
+//        repoCall = api.getRepository(login, repoName)
+//
+//        // Call 인터페이스를 구현하는 익명 클래스의 인스턴스 생성
+//        // 앞에서 API 호출에 필요한 객체를 받았으므로
+//        // null 이 아님을 보증해줘야 함.(!!)
+//        repoCall!!.enqueue(object : Callback<GithubRepo> {
+//            override fun onResponse(call: Call<GithubRepo>, response: Response<GithubRepo>) {
+//                hideProgress(true)
+//
+//                val repo = response.body()
+//                if (response.isSuccessful && null != repo) {
+//                    // 저장소 소유자의 프로필 사진을 표시합니다.
+//                    GlideApp.with(this@RepositoryActivity)
+//                            .load(repo.owner.avatarUrl)
+//                            .into(ivProfile)
+//
+//                    // 저장소 정보를 표시합니다.
+//                    tvName.text = repo.fullName
+//                    tvStars.text = resources
+//                            .getQuantityString(R.plurals.star, repo.stars, repo.stars)
+//
+//                    if (null == repo.description) {
+//                        tvDescription.setText(R.string.no_description_provided)
+//
+//                    } else {
+//                        tvDescription.setText(R.string.description)
+//                    }
+//
+//                    if (null == repo.language) {
+//                        tvLanguage.setText(R.string.no_language_specified)
+//
+//                    } else {
+//                        tvLanguage.setText(R.string.language)
+//                    }
+//
+//                    try {
+//                        // 응답에 포함된 마지막 업데이트 시각을 Date 형식으로 변환합니다.
+//                        val lastUpdate = dateFormatInResoponse.parse(repo.updatedAt)
+//
+//                        // 마지막 업데이트 시각을 yyyy-MM-dd HH:mm:ss 형태로 표시합니다.
+//                        tvLastUpdate.text = dateFormatToShow.format(lastUpdate)
+//
+//                    } catch (ex: ParseException) {
+//                        tvLastUpdate.text = getString(R.string.unknown)
+//                    }
+//
+//                } else {
+//                    showError("Not successful: " + response.message())
+//                }
+//            }
+//
+//            override fun onFailure(call: Call<GithubRepo>, t: Throwable) {
+//                hideProgress(false)
+//                showError(t.message)
+//            }
+//        })
 
-        repoCall = api.getRepository(login, repoName)
+        // REST API 를 통해 저장소 정보를 요청 함.
+//        disposables.add(api.getRepository(login, repoName)
+        // '+=' 연산자로 disposable CompositeDisposable 에 추가.
+        disposables += api.getRepository(login, repoName)
+                // 이 이후에 수행되는 코드는 모두 메인 스레드에서 실행 함.
+                .observeOn(AndroidSchedulers.mainThread())
 
-        // Call 인터페이스를 구현하는 익명 클래스의 인스턴스 생성
-        // 앞에서 API 호출에 필요한 객체를 받았으므로
-        // null 이 아님을 보증해줘야 함.(!!)
-        repoCall!!.enqueue(object : Callback<GithubRepo> {
-            override fun onResponse(call: Call<GithubRepo>, response: Response<GithubRepo>) {
-                hideProgress(true)
+                // 구독할 때 수행할 작업을 구현 함.
+                .doOnSubscribe { showProgress() }
 
-                val repo = response.body()
-                if (response.isSuccessful && null != repo) {
-                    // 저장소 소유자의 프로필 사진을 표시합니다.
+                // 에러가 발생했을 때 수행할 작업을 구현 함.
+                .doOnError { hideProgress(true) }
+
+                // 옵서버블을 구독 함.
+                .subscribe({ repo ->
+
+                    // API 통해 저장소 정보를 정상적으로 받았을 때 처리할 작업을 구현 함.
+                    // 작업 중 오류가 발생하면 이 블로은 호출되지 않음.
                     GlideApp.with(this@RepositoryActivity)
                             .load(repo.owner.avatarUrl)
-                            .into(ivProfile)
+                            .into(ivActivityRepositoryProfile)
 
-                    // 저장소 정보를 표시합니다.
-                    tvName.text = repo.fullName
-                    tvStars.text = resources
+                    tvActivityRepositoryName.text = repo.fullName
+                    tvActivityRepositoryStars.text = resources
                             .getQuantityString(R.plurals.star, repo.stars, repo.stars)
 
                     if (null == repo.description) {
-                        tvDescription.setText(R.string.no_description_provided)
+                        tvActivityRepositoryDescription.setText(R.string.no_description_provided)
 
-                    } else {
-                        tvDescription.setText(R.string.description)
+                    } else{
+                        tvActivityRepositoryDescription.text = repo.description
                     }
 
                     if (null == repo.language) {
-                        tvLanguage.setText(R.string.no_language_specified)
+                        tvActivityRepositoryLanguage.setText(R.string.no_language_specified)
 
                     } else {
-                        tvLanguage.setText(R.string.language)
+                        tvActivityRepositoryLanguage.text = repo.language
                     }
 
                     try {
-                        // 응답에 포함된 마지막 업데이트 시각을 Date 형식으로 변환합니다.
                         val lastUpdate = dateFormatInResoponse.parse(repo.updatedAt)
+                        tvActivityRepositoryLastUpdate.text = dateFormatToShow.format(lastUpdate)
 
-                        // 마지막 업데이트 시각을 yyyy-MM-dd HH:mm:ss 형태로 표시합니다.
-                        tvLastUpdate.text = dateFormatToShow.format(lastUpdate)
-
-                    } catch (ex: ParseException) {
-                        tvLastUpdate.text = getString(R.string.unknown)
+                    }catch (e: ParseException) {
+                        tvActivityRepositoryLastUpdate.text = getString(R.string.unknown)
                     }
 
-                } else {
-                    showError("Not successful: " + response.message())
+                }) {
+                    // 에러 블록
+                    // 네트워크 오류나 데이터 처리 오류 등
+                    // 작업이 정상적으로 완료되지 않았을 때 호출 됨.
+                    showError(it.message)
                 }
-            }
-
-            override fun onFailure(call: Call<GithubRepo>, t: Throwable) {
-                hideProgress(false)
-                showError(t.message)
-            }
-        })
+//        )
     }
 
     private fun showProgress() {

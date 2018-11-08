@@ -12,6 +12,7 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
+import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
 import retrofit2.converter.gson.GsonConverterFactory
 
 /**
@@ -52,6 +53,9 @@ import retrofit2.converter.gson.GsonConverterFactory
 fun provideAuthApi(): AuthApi = Retrofit.Builder()
         .baseUrl("https://github.com/")
         .client(provideOkHttpClient(provideLoggingInterceptor(), null))
+        // 받은 응답을 옵서버블 형태로 변환 함.
+        // 비동기 방식으로 API 호출.
+        .addCallAdapterFactory(RxJava2CallAdapterFactory.createAsync())
         // GsonConverterFactory 사용해 JSON 형태 REST API 응답을 객체 형태로 변환
         .addConverterFactory(GsonConverterFactory.create())
         .build()
@@ -66,6 +70,9 @@ fun provideGithubApi(context: Context): GithubApi = Retrofit.Builder()
         .baseUrl("https://api.github.com/")
         .client(provideOkHttpClient(provideLoggingInterceptor(),
                 provideAuthInterceptor(provideAuthTokenProvider(context))))
+        // 받은 응답을 옵서버블 형태로 변환 함.
+        // 비동기 방식으로 API 호출.
+        .addCallAdapterFactory(RxJava2CallAdapterFactory.createAsync())
         // GsonConverterFactory 사용해 JSON 형태 REST API 응답을 객체 형태로 변환
         .addConverterFactory(GsonConverterFactory.create())
         .build()
