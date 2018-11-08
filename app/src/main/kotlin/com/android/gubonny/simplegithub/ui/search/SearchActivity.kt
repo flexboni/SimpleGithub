@@ -16,6 +16,7 @@ import com.android.gubonny.simplegithub.api.model.GithubRepo
 import com.android.gubonny.simplegithub.api.provideGithubApi
 import com.android.gubonny.simplegithub.extensions.plusAssign
 import com.android.gubonny.simplegithub.ui.repo.RepositoryActivity
+import com.jakewharton.rxbinding2.support.v7.widget.RxSearchView
 
 import kotlinx.android.synthetic.main.activity_search.*
 import org.jetbrains.anko.startActivity
@@ -48,6 +49,9 @@ class SearchActivity : AppCompatActivity(), SearchAdapter.ItemClickListenerNew {
     // searchCall 대신 사용.
     internal val disposables = CompositeDisposable()
 
+    // viewDisposables 프로퍼티 추가.
+    internal val viewDisposables = CompositeDisposable()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_search)
@@ -71,14 +75,19 @@ class SearchActivity : AppCompatActivity(), SearchAdapter.ItemClickListenerNew {
         // 관리하고 있던 디스포저블 객체를 모두 해제 함.
         // 네트워크 요청이 있다고 하면 자동 취소 됨.
         disposables.clear()
+
+        // 액티비티가 완전히 종료되고 있는 경우에만 관리하고 있는 disposable 을 해제 함.
+        // 화면이 꺼지거나 다른 액티비트를 호루하여 액티비티가 화면에서 사라지는 경우
+        // 해제하지 않음.
+        if (isFinishing) {
+            viewDisposables.clear()
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu_activity_search, menu)
         menuSearch = menu.findItem(R.id.menu_activity_search_query)
 
-        // SearchView 로 캐스팅.
-//        searchView = menuSearch.actionView as SearchView
         // SearchView.OnQueryTextListener 인터페이스 구현하는
         // 익명 클래스의 인스턴스를 생성함.
 //        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
@@ -96,24 +105,56 @@ class SearchActivity : AppCompatActivity(), SearchAdapter.ItemClickListenerNew {
 //            }
 //        })
 
-        // apply() 함수를 사용하여 객체 생성과 리스너 지정을 동시에 수행 함.
-        searchView = (menuSearch.actionView as SearchView).apply {
-            setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-                override fun onQueryTextSubmit(query: String): Boolean {
-                    // TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+//        // apply() 함수를 사용하여 객체 생성과 리스너 지정을 동시에 수행 함.
+//        searchView = (menuSearch.actionView as SearchView).apply {
+//            setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+//                override fun onQueryTextSubmit(query: String): Boolean {
+//                    // TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+//
+//                    updateTitle(query)
+//                    hideSoftKeyboard()
+//                    collapseSearchView()
+//                    searchRepository(query)
+//
+//                    return true
+//                }
+//
+//                override fun onQueryTextChange(newText: String): Boolean = false
+//
+//            })
+//        }
 
+        // SearchView 로 캐스팅.
+        searchView = menuSearch.actionView as SearchView
+
+        // SearchView 에서 발생하는 이벤트를 Observable 형태로 받기.
+        viewDisposables += RxSearchView.queryTextChangeEvents(searchView)
+
+                // 검색을 수행했을 때 발생한 이벤트만 받기.
+                .filter { it.isSubmitted }
+
+                // 이벤트에서 검색어 텍스트(CharSequence) 를 추출 함.
+                .map { it.queryText() }
+
+                // 빈 문자열이 아닌 검색어만 받기.
+                .filter { it.isNotEmpty() }
+
+                // 검색어를 String 형태로 변환 함.
+                .map { it.toString() }
+
+                // d이 이후에 수행되는 코드는 모두 메인 스레드에서 실행 함.
+                // RxAndroid 에서 제공하는 스케줄러인 AndroidSchedulers.mainThread() 사용 함.
+                .observeOn(AndroidSchedulers.mainThread())
+
+                // 옵서버블을 구독 함.
+                .subscribe { query ->
+
+                    // 검색 절차를 수행 함.
                     updateTitle(query)
                     hideSoftKeyboard()
                     collapseSearchView()
                     searchRepository(query)
-
-                    return true
                 }
-
-                override fun onQueryTextChange(newText: String): Boolean = false
-
-            })
-        }
 
         // with() 함수를 사용하여 menuSearch 범위 내에서 작업을 수행 함.
         with(menuSearch) {
