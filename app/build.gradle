@@ -84,4 +84,7 @@ dependencies {
     // 서포트 라이브러리의 SearchView 를 위한 바인딩을 제공하는
     // RxBinding 라이브러리 추가.
     implementation "com.jakewharton.rxbinding2:rxbinding-appcompat-v7:$rxBindingVersion"
+
+    // rxbinding-appcompat-v7 코틀린 확장 라이브러리 추가
+    implementation "com.jakewharton.rxbinding2:rxbinding-appcompat-v7-kotlin:$rxBindingVersion"
 }

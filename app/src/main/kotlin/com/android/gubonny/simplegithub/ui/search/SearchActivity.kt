@@ -17,6 +17,7 @@ import com.android.gubonny.simplegithub.api.provideGithubApi
 import com.android.gubonny.simplegithub.extensions.plusAssign
 import com.android.gubonny.simplegithub.ui.repo.RepositoryActivity
 import com.jakewharton.rxbinding2.support.v7.widget.RxSearchView
+import com.jakewharton.rxbinding2.support.v7.widget.queryTextChangeEvents
 
 import kotlinx.android.synthetic.main.activity_search.*
 import org.jetbrains.anko.startActivity
@@ -128,7 +129,9 @@ class SearchActivity : AppCompatActivity(), SearchAdapter.ItemClickListenerNew {
         searchView = menuSearch.actionView as SearchView
 
         // SearchView 에서 발생하는 이벤트를 Observable 형태로 받기.
-        viewDisposables += RxSearchView.queryTextChangeEvents(searchView)
+//        viewDisposables += RxSearchView.queryTextChangeEvents(searchView)
+        // SearchView 인스턴스에서 RxBinding 에서 제공하는 함수를 직접 호출 함.
+        viewDisposables += searchView.queryTextChangeEvents()
 
                 // 검색을 수행했을 때 발생한 이벤트만 받기.
                 .filter { it.isSubmitted }
