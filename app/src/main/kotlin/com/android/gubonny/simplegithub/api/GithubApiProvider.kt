@@ -41,81 +41,82 @@ import retrofit2.converter.gson.GsonConverterFactory
  */
 
 // 싱글톤으로 변환
-object GithubApiProvider {
+// 싱글콘 클래스를 제거하고 패키지 단위 함수로 다시 선언 함.
+//object GithubApiProvider {
 
-    // Auth API 사용을 위한 호스트 서버 주소
-    // 액세스 토큰 획득을 위한 객체를 생성
-    fun provideAuthApi(): AuthApi {
+// Auth API 사용을 위한 호스트 서버 주소
+// 액세스 토큰 획득을 위한 객체를 생성
+// 함수 내부에서 변수나 값을 선언하거나 연산을 수행하는 부분 없이,
+// 생성된 객체를 반환하는 코드로만 구성됨.
+// -> 단일 표현식(single expression) 형태로 표시함.
+fun provideAuthApi(): AuthApi = Retrofit.Builder()
+        .baseUrl("https://github.com/")
+        .client(provideOkHttpClient(provideLoggingInterceptor(), null))
+        // GsonConverterFactory 사용해 JSON 형태 REST API 응답을 객체 형태로 변환
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+        .create(AuthApi::class.java)
 
-        return Retrofit.Builder()
-                .baseUrl("https://github.com/")
-                .client(provideOkHttpClient(provideLoggingInterceptor(), null))
-                // GsonConverterFactory 사용해 JSON 형태 REST API 응답을 객체 형태로 변환
-                .addConverterFactory(GsonConverterFactory.create())
-                .build()
-                .create(AuthApi::class.java)
-    }
+// Github API 사용을 위한 호스트 서버 주소
+// 저장소 정보에 접근하기 위한 객체를 생성
+// 함수 내부에서 변수나 값을 선언하거나 연산을 수행하는 부분 없이,
+// 생성된 객체를 반환하는 코드로만 구성됨.
+// -> 단일 표현식(single expression) 형태로 표시함.
+fun provideGithubApi(context: Context): GithubApi = Retrofit.Builder()
+        .baseUrl("https://api.github.com/")
+        .client(provideOkHttpClient(provideLoggingInterceptor(),
+                provideAuthInterceptor(provideAuthTokenProvider(context))))
+        // GsonConverterFactory 사용해 JSON 형태 REST API 응답을 객체 형태로 변환
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+        .create(GithubApi::class.java)
 
-    // Github API 사용을 위한 호스트 서버 주소
-    // 저장소 정보에 접근하기 위한 객체를 생성
-    fun provideGithubApi(context: Context): GithubApi {
+// 네트워크 통신용 클라이언트
+// 통신에 사용할 클라이언트 객체 생성
+// apply()나 run()과 같은 범위 지정 함수를 사용하면
+// 함수 내부의 변수선언을 완전히 제거할 수 있으며,
+// 이로인해 단일 표현식 형태로 표현 가능 함.
+private fun provideOkHttpClient(
+        interceptor: HttpLoggingInterceptor,
+        authInterceptor: AuthInterceptor?): OkHttpClient = OkHttpClient.Builder()
 
-        return Retrofit.Builder()
-                .baseUrl("https://api.github.com/")
-                .client(provideOkHttpClient(provideLoggingInterceptor(),
-                        provideAuthInterceptor(provideAuthTokenProvider(context))))
-                // GsonConverterFactory 사용해 JSON 형태 REST API 응답을 객체 형태로 변환
-                .addConverterFactory(GsonConverterFactory.create())
-                .build()
-                .create(GithubApi::class.java)
-    }
-
-    // 네트워크 통신용 클라이언트
-    // 통신에 사용할 클라이언트 객체 생성
-    private fun provideOkHttpClient(
-            interceptor: HttpLoggingInterceptor,
-            authInterceptor: AuthInterceptor?): OkHttpClient {
-
-        val b = OkHttpClient.Builder()
-        if (null != authInterceptor) {
-            // 매 요청의 헤더에 액세스 토큰 정보를 추가함.
-            b.addInterceptor(authInterceptor)
+        // run() 함수로 OkHttpClient.Builder 변수 선언을 제거함.
+        .run {
+            if (null != authInterceptor) {
+                // 매 요청의 헤더에 액세스 토큰 정보를 추가함.
+                addInterceptor(authInterceptor)
+            }
+// 이 클라이언트를 통해 오고 가는 네트워크 요청/응답을 로그로 표시하도록 함.
+            addInterceptor(interceptor)
+            build()
         }
-        // 이 클라이언트를 통해 오고 가는 네트워크 요청/응답을 로그로 표시하도록 함.
-        b.addInterceptor(interceptor)
 
-        return b.build()
-    }
 
-    // 네트워크 요청/응답을 로그에 표시하는 Interceptor 객체 생성
-    private fun provideLoggingInterceptor(): HttpLoggingInterceptor {
-        val interceptor = HttpLoggingInterceptor()
-        interceptor.level = HttpLoggingInterceptor.Level.BODY
-        return interceptor
-    }
-
-    // 액세스 토큰을 헤더에 추가하는 Interceptor 객체 생성
-    private fun provideAuthInterceptor(provider: AuthTokenProvider): AuthInterceptor {
-        val token = provider.token ?: throw IllegalStateException("authToken cannot be null.")
-        return AuthInterceptor(token)
-    }
-
-    private fun provideAuthTokenProvider(context: Context): AuthTokenProvider {
-        return AuthTokenProvider(context.applicationContext)
-    }
-
-    internal class AuthInterceptor(private val token: String) : Interceptor {
-
-        @Throws(IOException::class)
-        override fun intercept(chain: Interceptor.Chain): Response {
-            val original = chain.request()
-
-            // 요청의 헤더에 액세스 토믄 정보를 추가함.
-            val b = original.newBuilder()
-                    .addHeader("Authorization", "token $token")
-
-            val request = b.build()
-            return chain.proceed(request)
+// 네트워크 요청/응답을 로그에 표시하는 Interceptor 객체 생성
+private fun provideLoggingInterceptor(): HttpLoggingInterceptor = HttpLoggingInterceptor()
+        // apply() 함수로 인스턴스 생성과 프로퍼티 값 변경을 동시에 수행 함.
+        .apply {
+            level = HttpLoggingInterceptor.Level.BODY
         }
+
+// 액세스 토큰을 헤더에 추가하는 Interceptor 객체 생성
+private fun provideAuthInterceptor(provider: AuthTokenProvider): AuthInterceptor {
+    val token = provider.token ?: throw IllegalStateException("authToken cannot be null.")
+    return AuthInterceptor(token)
+}
+
+private fun provideAuthTokenProvider(context: Context): AuthTokenProvider = AuthTokenProvider(context.applicationContext)
+
+internal class AuthInterceptor(private val token: String) : Interceptor {
+
+    // with() 함수와 run() 함수로 추가 변수 선언을 제거 함.
+    @Throws(IOException::class)
+    override fun intercept(chain: Interceptor.Chain): Response = with(chain) {
+        val newRequest = request().newBuilder().run {
+            addHeader("Authorization", "token $token")
+            build()
+        }
+        proceed(newRequest)
     }
 }
+//}

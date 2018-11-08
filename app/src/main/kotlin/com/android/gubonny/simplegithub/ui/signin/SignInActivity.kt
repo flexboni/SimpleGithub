@@ -14,7 +14,8 @@ import com.android.gubonny.simplegithub.BuildConfig
 import com.android.gubonny.simplegithub.R
 import com.android.gubonny.simplegithub.api.AuthApi
 import com.android.gubonny.simplegithub.api.model.GithubAccessToken
-import com.android.gubonny.simplegithub.api.GithubApiProvider
+import com.android.gubonny.simplegithub.api.provideAuthApi
+//import com.android.gubonny.simplegithub.api.GithubApiProvider
 import com.android.gubonny.simplegithub.data.AuthTokenProvider
 import com.android.gubonny.simplegithub.ui.main.MainActivity
 
@@ -23,7 +24,11 @@ import retrofit2.Callback
 import retrofit2.Response
 
 // 코틀린 안드로이드 익스텐션에서 activity_sign_in 레이아웃을 사용
-//import kotlinx.android.synthetic.main.activity_sign_in.*
+import kotlinx.android.synthetic.main.activity_sign_in.*
+import org.jetbrains.anko.clearTask
+import org.jetbrains.anko.intentFor
+import org.jetbrains.anko.longToast
+import org.jetbrains.anko.newTask
 
 
 class SignInActivity : AppCompatActivity() {
@@ -35,7 +40,12 @@ class SignInActivity : AppCompatActivity() {
 
     internal lateinit var authTokenProvider: AuthTokenProvider
 
-    internal lateinit var accessTokenCall: Call<GithubAccessToken>
+    //    internal lateinit var accessTokenCall: Call<GithubAccessToken>
+    // lateinit 을 선언한 경우 컴파일 시점에서
+    // 해당 객체가 null 값인지 확인 할 수 없어
+    // 정말 필요할 때만 사용하는 것이 좋고,
+    // 지금 경우에는 명시적으로 null 선언을 해주는게 좋다.
+    internal var accessTokenCall: Call<GithubAccessToken>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,7 +71,9 @@ class SignInActivity : AppCompatActivity() {
             intent.launchUrl(this@SignInActivity, authUri)
         }
 
-        api = GithubApiProvider.provideAuthApi()
+//        api = GithubApiProvider.provideAuthApi()
+        // 패키지 단위 함수를 호출.
+        api = provideAuthApi()
         authTokenProvider = AuthTokenProvider(this)
 
         // 저장된 액세스 토큰이 있다면 메인 액티비티로 이동합니다.
@@ -88,16 +100,28 @@ class SignInActivity : AppCompatActivity() {
         getAccessToken(code)
     }
 
+    override fun onStop() {
+        super.onStop()
+
+        // 액티비티가 화면에서 사라지는 시점에
+        // API 호출 객체가 생성되어 있다면 API 요청을 취소 함
+        accessTokenCall?.run { cancel() }
+    }
+
     private fun getAccessToken(code: String) {
         showProgress()
 
         // 액세스 토큰을 요청하는 REST API
+        // 이 줄이 실행될 때 accessTokenCall에 반환 값이 저장 됨.
         accessTokenCall = api.getAccessToken(
                 BuildConfig.GITHUB_CLIENT_ID, BuildConfig.GITHUB_CLIENT_SECRET, code)
 
         // 비동기 방식으로 액세스 토큰을 요청합니다.
         // Call 인터페이스를 구현하는 익명 클래스의 인스턴스 생성
-        accessTokenCall.enqueue(object : Callback<GithubAccessToken> {
+        // 앞에서 API 호출에 필요한 객체를 받았으므로,
+        // 이 시점에서 accessTokenCall 객체의 값은 null 이 아니므로
+        // null 값 보증(!!) 을 사용하여 이 객체를 사용 함.
+        accessTokenCall!!.enqueue(object : Callback<GithubAccessToken> {
             override fun onResponse(call: Call<GithubAccessToken>, response: Response<GithubAccessToken>) {
                 hideProgress()
 
@@ -136,13 +160,19 @@ class SignInActivity : AppCompatActivity() {
     }
 
     private fun showError(throwable: Throwable) {
-        Toast.makeText(this, throwable.message, Toast.LENGTH_LONG).show()
+//        Toast.makeText(this, throwable.message, Toast.LENGTH_LONG).show()
+
+        // 긴 시간 동안 표시되는 anko 토스트 메시지 출력
+        longToast(throwable.message ?: "No Message available")
     }
 
     private fun launchMainActivity() {
-        startActivity(Intent(
-                this@SignInActivity, MainActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+//        startActivity(Intent(
+//                this@SignInActivity, MainActivity::class.java)
+//                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+//                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+
+        // intentFor 사용해 전환할 화면 실행과 함께 flag 값 지정.
+        startActivity(intentFor<MainActivity>().clearTask().newTask())
     }
 }

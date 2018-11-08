@@ -9,10 +9,12 @@ import android.widget.ProgressBar
 import android.widget.TextView
 
 import com.android.gubonny.simplegithub.R
-import com.android.gubonny.simplegithub.api.GithubApi
-import com.android.gubonny.simplegithub.api.GithubApiProvider
+//import com.android.gubonny.simplegithub.api.GithubApi
+//import com.android.gubonny.simplegithub.api.GithubApiProvider
 import com.android.gubonny.simplegithub.api.model.GithubRepo
+import com.android.gubonny.simplegithub.api.provideGithubApi
 import com.android.gubonny.simplegithub.ui.GlideApp
+import kotlinx.android.synthetic.main.activity_repository.*
 
 import java.text.ParseException
 import java.text.SimpleDateFormat
@@ -23,6 +25,17 @@ import retrofit2.Callback
 import retrofit2.Response
 
 class RepositoryActivity : AppCompatActivity() {
+
+    // 정적 필드로 정의되어 있던 항목은 동반 객체 내부에 정의함.
+    // 클래스 내 동반 객체의 정의부를 가장 위로 옮겨 줌.
+    companion object {
+
+        // const 키워드 추가.
+        const val KEY_USER_LOGIN = "user_login"
+
+        // const 키워드 추가.
+        const val KEY_REPO_NAME = "repo_name"
+    }
 
     internal lateinit var llContent: LinearLayout
 
@@ -42,17 +55,23 @@ class RepositoryActivity : AppCompatActivity() {
 
     internal lateinit var tvMessage: TextView
 
-    internal lateinit var api: GithubApi
+    // lazy 로 전향 함.
+    internal val api by lazy { provideGithubApi(this) }
 
-    internal lateinit var repoCall: Call<GithubRepo>
+    // null 값을 허용하도록 한 후, 초기값을 명시적으로 null 지정 함.
+    internal var repoCall: Call<GithubRepo>? = null
 
     // REST API 응답에 포함된 날짜 및 시간 표시 형식입니다.
-    internal var dateFormatInResoponse = SimpleDateFormat(
+    // 객체 한번 생성하고 나면
+    // 이후 변경할 일이 없어 val 로 변경.
+    internal val dateFormatInResoponse = SimpleDateFormat(
             "yyyy-MM-dd'T'HH:mm:ssX", Locale.getDefault()
     )
 
     // 화면에서 사용자에게 보여줄 날짜 및 시간 표시 형식입니다.
-    internal var dateFormatToShow = SimpleDateFormat(
+    // 객체 한번 생성하고 나면
+    // 이후 변경할 일이 없어 val 로 변경.
+    internal val dateFormatToShow = SimpleDateFormat(
             "yyyy-MM-dd HH:mm:ss", Locale.getDefault()
     )
 
@@ -60,7 +79,7 @@ class RepositoryActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_repository)
 
-        api = GithubApiProvider.provideGithubApi(this)
+//        api = GithubApiProvider.provideGithubApi(this)
 
         // 액티비티 호출 시 전달받은 사용자 이름과 저장소 이름을 추출합니다.
         // 엘비스 연산자를 사용하여 null 값을 검사함.
@@ -79,13 +98,23 @@ class RepositoryActivity : AppCompatActivity() {
 
     }
 
+    override fun onStop() {
+        super.onStop()
+        // 액티비티가 화면에서 사라지는 시점에서
+        // API 호출 객체가 생성되어 있다면
+        // API 요청을 취소 함.
+        repoCall?.run { cancel() }
+    }
+
     private fun showRepositoryInfo(login: String, repoName: String) {
         showProgress()
 
         repoCall = api.getRepository(login, repoName)
 
         // Call 인터페이스를 구현하는 익명 클래스의 인스턴스 생성
-        repoCall.enqueue(object : Callback<GithubRepo> {
+        // 앞에서 API 호출에 필요한 객체를 받았으므로
+        // null 이 아님을 보증해줘야 함.(!!)
+        repoCall!!.enqueue(object : Callback<GithubRepo> {
             override fun onResponse(call: Call<GithubRepo>, response: Response<GithubRepo>) {
                 hideProgress(true)
 
@@ -150,15 +179,14 @@ class RepositoryActivity : AppCompatActivity() {
 
     private fun showError(message: String?) {
         // message 가 null 값인 경우 "Unexpected error." 메시지를 표시함.
-        tvMessage.text = message
-        pbProgress.visibility = View.VISIBLE
-    }
+//        tvMessage.text = message
+//        pbProgress.visibility = View.VISIBLE
 
-    // 정적 필드로 정의되어 있던 항목은 동반 객체 내부에 정의함.
-    companion object {
-
-        val KEY_USER_LOGIN = "user_login"
-
-        val KEY_REPO_NAME = "repo_name"
+        // with() 함수 사용하여
+        // tvActivityRepositoryMessage 범위 내에서 작업을 수행 함.
+        with(tvActivityRepositoryMessage) {
+            text = message
+            visibility = View.VISIBLE
+        }
     }
 }

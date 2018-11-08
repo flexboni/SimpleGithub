@@ -70,4 +70,8 @@ dependencies {
 
     // Glide 4.0 의 Generated API 를 위해 필요함.
     kapt "com.github.bumptech.glide:compiler:$glideVersion"
+
+    // Anko Commons 라이브러리 추가
+    implementation "org.jetbrains.anko:anko-commons:$ankoVersion"
+
 }

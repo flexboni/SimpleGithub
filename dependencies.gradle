@@ -17,6 +17,9 @@ ext {
     retrofitVersion = '2.3.0'
     supportLibVersion = '27.0.1'
 
-    // 프로젝트에서 사용할 코틀린 버전 지정
+    // 코틀린 버전 지정
     kotlinVersion = '1.1.60'
+
+    // Anko 라이브러리 버전
+    ankoVersion = '0.10.2'
 }
