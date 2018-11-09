@@ -14,11 +14,14 @@ import android.widget.ProgressBar
 import com.android.gubonny.simplegithub.R
 import com.android.gubonny.simplegithub.api.model.GithubRepo
 import com.android.gubonny.simplegithub.api.provideGithubApi
+import com.android.gubonny.simplegithub.data.provideSearchHistroyDao
 import com.android.gubonny.simplegithub.extensions.plusAssign
+import com.android.gubonny.simplegithub.extensions.runOnIoScheduler
 import com.android.gubonny.simplegithub.rx.AutoClearedDisposable
 import com.android.gubonny.simplegithub.ui.repo.RepositoryActivity
 import com.jakewharton.rxbinding2.support.v7.widget.RxSearchView
 import com.jakewharton.rxbinding2.support.v7.widget.queryTextChangeEvents
+import io.reactivex.Completable
 
 import kotlinx.android.synthetic.main.activity_search.*
 import org.jetbrains.anko.startActivity
@@ -26,6 +29,7 @@ import org.jetbrains.anko.startActivity
 import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.schedulers.Schedulers
 
 
 class SearchActivity : AppCompatActivity(), SearchAdapter.ItemClickListenerNew {
@@ -58,6 +62,8 @@ class SearchActivity : AppCompatActivity(), SearchAdapter.ItemClickListenerNew {
     // CompositeDisposable 에서 AutoClearedDisposable 로 변겅.
     internal val viewDisposables = AutoClearedDisposable(lifecycleOwner = this,
             alwaysClearOnStop = false)
+
+    internal val searchHistoryDao by lazy { provideSearchHistroyDao(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -208,6 +214,19 @@ class SearchActivity : AppCompatActivity(), SearchAdapter.ItemClickListenerNew {
 //            putExtra(RepositoryActivity.KEY_USER_LOGIN, repository.owner.login)
 //            putExtra(RepositoryActivity.KEY_REPO_NAME, repository.name)
 //    }
+
+//        // 데이터베이스에 저장소를 추가 함.
+//        // 데이터 조작 코드를 메인 스레드에서 호출하면 에러가 발생하므로,
+//        // RxJava 의 Completable 을 사용하여
+//        // IO 스레드에서 데이터 추가 작업을 수행하도록 함.
+//        // 참고> Completable 은 옵서버블의 한 종류며, 이벤트 스트림에 자료를 전달하지 않아
+//        // 반환하는 값이 없는 작업에 사용.
+//        disposables += Completable
+//                .fromCallable { searchHistoryDao.add(repository) }
+//                .subscribeOn(Schedulers.io())
+//                .subscribe()
+        // runOnIoSchefuler 함수로 IO 스케줄러에서 실행할 작업을 간단히 표현 함.
+        disposables += runOnIoScheduler { searchHistoryDao.add(repository) }
 
         // 부가정보로 전달할 항목을 함수의 인자로 바로 넣어 줌.
         startActivity<RepositoryActivity>(
