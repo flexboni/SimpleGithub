@@ -14,6 +14,7 @@ import com.android.gubonny.simplegithub.R
 import com.android.gubonny.simplegithub.api.model.GithubRepo
 import com.android.gubonny.simplegithub.api.provideGithubApi
 import com.android.gubonny.simplegithub.extensions.plusAssign
+import com.android.gubonny.simplegithub.rx.AutoClearedDisposable
 import com.android.gubonny.simplegithub.ui.GlideApp
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
@@ -75,15 +76,19 @@ class RepositoryActivity : AppCompatActivity() {
             "yyyy-MM-dd HH:mm:ss", Locale.getDefault()
     )
 
-    //    // null 값을 허용하도록 한 후, 초기값을 명시적으로 null 지정 함.
-//    internal var repoCall: Call<GithubRepo>? = null
-    // 여러 disposable 객체를 관리할 수 있는 CompositeDisposable 객체를 초기화 함.
-    // repoCall 대신 사용.
-    internal val disposables = CompositeDisposable()
+    //    //    // null 값을 허용하도록 한 후, 초기값을 명시적으로 null 지정 함.
+////    internal var repoCall: Call<GithubRepo>? = null
+//    // 여러 disposable 객체를 관리할 수 있는 CompositeDisposable 객체를 초기화 함.
+//    // repoCall 대신 사용.
+//    internal val disposables = CompositeDisposable()
+    // CompositeDisposable 에서 AutoClearedDisposable 로 변겅.
+    internal val disposables = AutoClearedDisposable(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_repository)
+
+        lifecycle += disposables
 
 //        api = GithubApiProvider.provideGithubApi(this)
 
@@ -104,17 +109,17 @@ class RepositoryActivity : AppCompatActivity() {
 
     }
 
-    override fun onStop() {
-        super.onStop()
-//        // 액티비티가 화면에서 사라지는 시점에서
-//        // API 호출 객체가 생성되어 있다면
-//        // API 요청을 취소 함.
-//        repoCall?.run { cancel() }
-
-        // 관리하고 있던 디스포저블 객체를 모두 해제 함.
-        // 네트워크 요청이 있다고 하면 자동 취소 됨.
-        disposables.clear()
-    }
+//    override fun onStop() {
+//        super.onStop()
+////        // 액티비티가 화면에서 사라지는 시점에서
+////        // API 호출 객체가 생성되어 있다면
+////        // API 요청을 취소 함.
+////        repoCall?.run { cancel() }
+//
+//        // 관리하고 있던 디스포저블 객체를 모두 해제 함.
+//        // 네트워크 요청이 있다고 하면 자동 취소 됨.
+//        disposables.clear()
+//    }
 
     private fun showRepositoryInfo(login: String, repoName: String) {
 //        showProgress()
@@ -205,7 +210,7 @@ class RepositoryActivity : AppCompatActivity() {
                     if (null == repo.description) {
                         tvActivityRepositoryDescription.setText(R.string.no_description_provided)
 
-                    } else{
+                    } else {
                         tvActivityRepositoryDescription.text = repo.description
                     }
 
@@ -220,7 +225,7 @@ class RepositoryActivity : AppCompatActivity() {
                         val lastUpdate = dateFormatInResoponse.parse(repo.updatedAt)
                         tvActivityRepositoryLastUpdate.text = dateFormatToShow.format(lastUpdate)
 
-                    }catch (e: ParseException) {
+                    } catch (e: ParseException) {
                         tvActivityRepositoryLastUpdate.text = getString(R.string.unknown)
                     }
 

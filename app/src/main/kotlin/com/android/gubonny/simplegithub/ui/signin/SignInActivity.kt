@@ -18,6 +18,7 @@ import com.android.gubonny.simplegithub.api.provideAuthApi
 //import com.android.gubonny.simplegithub.api.GithubApiProvider
 import com.android.gubonny.simplegithub.data.AuthTokenProvider
 import com.android.gubonny.simplegithub.extensions.plusAssign
+import com.android.gubonny.simplegithub.rx.AutoClearedDisposable
 import com.android.gubonny.simplegithub.ui.main.MainActivity
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
@@ -49,14 +50,20 @@ class SignInActivity : AppCompatActivity() {
 //    // 정말 필요할 때만 사용하는 것이 좋고,
 //    // 지금 경우에는 명시적으로 null 선언을 해주는게 좋다.
 //    internal var accessTokenCall: Call<GithubAccessToken>? = null
-    // 여러 disposable 객체를 관리할 수 있는 CompositeDisposable 객체를 초기화 함.
-    // accessTokenCall 대신 사용.
-    internal val disposables = CompositeDisposable()
+//    // 여러 disposable 객체를 관리할 수 있는 CompositeDisposable 객체를 초기화 함.
+//    // accessTokenCall 대신 사용.
+//    internal val disposables = CompositeDisposable()
+    // CompositeDisposable 에서 AutoClearedDisposable 로 변경
+    internal val disposables = AutoClearedDisposable(this)
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_sign_in)
+
+        // Lifecycle.addObserver() 함수를 사용하여
+        // AutoClearedDisposable 객체를 옵서버로 등록.
+        lifecycle += disposables
 
         // 인스턴스 선언 없이 뷰 ID 를 사용하여 인스턴스에 접근함.
         // View.OnClickListener 의 본체를 람다 표현식으로 작성함
@@ -90,17 +97,19 @@ class SignInActivity : AppCompatActivity() {
 
     }
 
-    override fun onStop() {
-        super.onStop()
-
-//        // 액티비티가 화면에서 사라지는 시점에
-//        // API 호출 객체가 생성되어 있다면 API 요청을 취소 함
-//        accessTokenCall?.run { cancel() }
-
-        // 관리하고 있던 디스포저블 객체를 모두 해제 함.
-        // 네트워크 요청이 있다고 하면 자동 취소 됨.
-        disposables.clear()
-    }
+    // AutoClearedDisposable 를 사용 하므로
+    // 더 이상 override 할 필요 없음
+//    override fun onStop() {
+//        super.onStop()
+//
+////        // 액티비티가 화면에서 사라지는 시점에
+////        // API 호출 객체가 생성되어 있다면 API 요청을 취소 함
+////        accessTokenCall?.run { cancel() }
+//
+//        // 관리하고 있던 디스포저블 객체를 모두 해제 함.
+//        // 네트워크 요청이 있다고 하면 자동 취소 됨.
+//        disposables.clear()
+//    }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)

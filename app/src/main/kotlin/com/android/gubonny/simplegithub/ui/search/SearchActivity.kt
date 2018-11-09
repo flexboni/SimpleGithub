@@ -15,6 +15,7 @@ import com.android.gubonny.simplegithub.R
 import com.android.gubonny.simplegithub.api.model.GithubRepo
 import com.android.gubonny.simplegithub.api.provideGithubApi
 import com.android.gubonny.simplegithub.extensions.plusAssign
+import com.android.gubonny.simplegithub.rx.AutoClearedDisposable
 import com.android.gubonny.simplegithub.ui.repo.RepositoryActivity
 import com.jakewharton.rxbinding2.support.v7.widget.RxSearchView
 import com.jakewharton.rxbinding2.support.v7.widget.queryTextChangeEvents
@@ -45,17 +46,26 @@ class SearchActivity : AppCompatActivity(), SearchAdapter.ItemClickListenerNew {
 
     internal lateinit var searchView: SearchView
 
-    //    internal var searchCall: Call<RepoSearchResponse>? = null
-    // 여러 disposable 객체를 관리할 수 있는 CompositeDisposable 객체를 초기화 함.
-    // searchCall 대신 사용.
-    internal val disposables = CompositeDisposable()
+    //    //    internal var searchCall: Call<RepoSearchResponse>? = null
+//    // 여러 disposable 객체를 관리할 수 있는 CompositeDisposable 객체를 초기화 함.
+//    // searchCall 대신 사용.
+//    internal val disposables = CompositeDisposable()
+    // CompositeDisposable 에서 AutoClearedDisposable 로 변겅.
+    internal val disposables = AutoClearedDisposable(this)
 
-    // viewDisposables 프로퍼티 추가.
-    internal val viewDisposables = CompositeDisposable()
+    //    // viewDisposables 프로퍼티 추가.
+//    internal val viewDisposables = CompositeDisposable()
+    // CompositeDisposable 에서 AutoClearedDisposable 로 변겅.
+    internal val viewDisposables = AutoClearedDisposable(lifecycleOwner = this,
+            alwaysClearOnStop = false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_search)
+
+        // Lifecycle.addOberver() 함수를 사용하여 각 객체를 옵서버로 등록 함.
+        lifecycle += disposables
+        lifecycle += viewDisposables
 
         adapater.setItemClickListener(this)
 
@@ -66,24 +76,25 @@ class SearchActivity : AppCompatActivity(), SearchAdapter.ItemClickListenerNew {
         }
     }
 
-    override fun onStop() {
-        super.onStop()
-//        // 액티비티가 화면에서 사라지는 시점에
-//        // API 호출 객체가 생성되어 있다면
-//        // API 요청을 취소 함.
-//        searchCall?.run { cancel() }
-
-        // 관리하고 있던 디스포저블 객체를 모두 해제 함.
-        // 네트워크 요청이 있다고 하면 자동 취소 됨.
-        disposables.clear()
-
-        // 액티비티가 완전히 종료되고 있는 경우에만 관리하고 있는 disposable 을 해제 함.
-        // 화면이 꺼지거나 다른 액티비트를 호루하여 액티비티가 화면에서 사라지는 경우
-        // 해제하지 않음.
-        if (isFinishing) {
-            viewDisposables.clear()
-        }
-    }
+    // AutoClearedDisposable 로 변겅해 더 이상 override 가 필요 없음
+//    override fun onStop() {
+//        super.onStop()
+////        // 액티비티가 화면에서 사라지는 시점에
+////        // API 호출 객체가 생성되어 있다면
+////        // API 요청을 취소 함.
+////        searchCall?.run { cancel() }
+//
+//        // 관리하고 있던 디스포저블 객체를 모두 해제 함.
+//        // 네트워크 요청이 있다고 하면 자동 취소 됨.
+//        disposables.clear()
+//
+//        // 액티비티가 완전히 종료되고 있는 경우에만 관리하고 있는 disposable 을 해제 함.
+//        // 화면이 꺼지거나 다른 액티비트를 호루하여 액티비티가 화면에서 사라지는 경우
+//        // 해제하지 않음.
+//        if (isFinishing) {
+//            viewDisposables.clear()
+//        }
+//    }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu_activity_search, menu)
